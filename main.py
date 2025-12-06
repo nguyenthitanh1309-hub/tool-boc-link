@@ -12,8 +12,6 @@ app = Flask(__name__)
 PARTNER_CODE = os.environ.get("MOMO_PARTNER_CODE")
 ACCESS_KEY = os.environ.get("MOMO_ACCESS_KEY")
 SECRET_KEY = os.environ.get("MOMO_SECRET_KEY") 
-if not PARTNER_CODE:
-    print("LỖI: Chưa cấu hình Key trên Render!")
 MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
 
@@ -24,11 +22,11 @@ def momo_generator():
     
     if request.method == 'POST':
         try:
-            # 1. Lấy số tiền và nội dung bả nhập từ Web
+            # 1. Lấy số tiền và nội dung nhập từ Web
             amount_input = request.form.get('amount')
             note_input = request.form.get('note')
             
-            # Xử lý số tiền (bỏ dấu chấm phẩy nếu có)
+            # Xử lý số tiền 
             amount = str(amount_input).replace(',', '').replace('.', '')
             
             # 2. Tạo bộ dữ liệu gửi sang MoMo
@@ -79,7 +77,7 @@ def momo_generator():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>Công cụ tạo Link MoMo VIP</title>
+        <title>tool bọc link</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
             body {{ font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 50px; }}
@@ -95,18 +93,18 @@ def momo_generator():
     </head>
     <body>
         <div class="card">
-            <h2>💸 MoMo Link Generator</h2>
+            <h2> MoMo Link Generator</h2>
             <form method="POST">
                 <label>Số tiền muốn thu (VNĐ):</label>
-                <input type="number" name="amount" placeholder="Ví dụ: 20000" required>
+                <input type="number" name="amount" placeholder=" " required>
                 
                 <label>Nội dung thu:</label>
-                <input type="text" name="note" placeholder="Ví dụ: Mua the Garena 20k">
+                <input type="text" name="note" placeholder=" ">
                 
                 <button type="submit">TẠO LINK NGAY</button>
             </form>
             
-            {f'<div class="result"><b> Link của chị đây:</b><br><a href="{link_ket_qua}" target="_blank">Bấm vào đây để test</a><br><br><input type="text" value="{link_ket_qua}" readonly onclick="this.select()"></div>' if link_ket_qua else ''}
+            {f'<div class="result"><b> Link đã bọc:</b><br><a href="{link_ket_qua}" target="_blank">Bấm vào đây để test</a><br><br><input type="text" value="{link_ket_qua}" readonly onclick="this.select()"></div>' if link_ket_qua else ''}
             
             {f'<div class="error"> Lỗi: {error_msg}</div>' if error_msg else ''}
         </div>

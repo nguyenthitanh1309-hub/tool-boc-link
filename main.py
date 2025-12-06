@@ -1,95 +1,114 @@
 import os
-import base64
-import urllib.parse
+import json
+import hmac
+import hashlib
+import requests
 import uuid
-import datetime
-from flask import Flask, request, render_template_string
+import time
+from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 
+# --- CẤU HÌNH KHO BÁU (Điền Key thật vào đây) ---
+# Ní điền xong nhớ giữ bí mật file này nha
+PARTNER_CODE = os.environ.get("MOMO_PARTNER_CODE")
+ACCESS_KEY = os.environ.get("MOMO_ACCESS_KEY")
+SECRET_KEY = os.environ.get("MOMO_SECRET_KEY")
+MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
-
-RECEIVER_PHONE = "01663606953"  
-
-RECEIVER_NAME = "TRAN HAI YEN" 
 
 @app.route('/admin-momo', methods=['GET', 'POST'])
-def generator():
-    gen_link = ""
-    if request.method == 'POST':
-        amount = request.form.get('amount')
-        note = request.form.get('note')
-        
-        # Tạo hóa đơn Fake
-        fake_order_id = uuid.uuid4().hex[:16].upper() # Mã đơn hàng nhìn cho uy tín
-        invoice_data = f"{amount}|{note}|{fake_order_id}"
-        
-        encoded = base64.b64encode(invoice_data.encode('utf-8')).decode('utf-8')
-        host_url = request.host_url.rstrip('/')
-        gen_link = f"{host_url}/?data={encoded}"
-
-    return f"""
-    <!DOCTYPE html>
-    <html lang="vi">
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>
-            body {{ font-family: sans-serif; padding: 20px; text-align: center; }}
-            input, button {{ width: 100%; padding: 15px; margin: 10px 0; }}
-            button {{ background: #d82d8b; color: white; font-weight: bold; border: none; }}
-        </style>
-    </head>
-    <body>
-        <h2>tool bọc link</h2>
-        <form method="POST">
-            <input type="number" name="amount" placeholder="Số tiền" required>
-            <input type="text" name="note" placeholder="Mã Hóa Đơn">
-            <button type="submit">TẠO LINK</button>
-        </form>
-        {f'<div>Copy link:<br><a href="{gen_link}">{gen_link}</a></div>' if gen_link else ''}
-    </body>
-    </html>
-    """
-
-@app.route('/')
-def show_invoice():
-    data = request.args.get('data')
-    if not data: return "Lỗi link!"
+def momo_generator():
+    link_ket_qua = ""
+    error_msg = ""
     
-    try:
-        decoded = base64.b64decode(data).decode('utf-8')
-        amount, note, order_id = decoded.split('|')
-        amount_formatted = "{:,.0f}".format(int(amount)).replace(",", ".") + "đ"
-        
-        # --- CHIÊU MỚI: DÙNG LINK me.momo.vn (Ổn định hơn momo://) ---
-        # Link này tự động gọi App và điền tiền
-        note_safe = urllib.parse.quote(note)
-        # Cấu trúc: https://me.momo.vn/SDT?amount=TIEN&message=NOIDUNG
-        deep_link = f"https://me.momo.vn/{RECEIVER_PHONE}?amount={amount}&message={note_safe}"
-        
-    except:
-        return "Lỗi dữ liệu!"
+    if request.method == 'POST':
+        try:
+            # 1. Lấy số tiền và nội dung nhập từ Web
+            amount_input = request.form.get('amount')
+            note_input = request.form.get('note')
+            
+            # Xử lý số tiền 
+            amount = str(amount_input).replace(',', '').replace('.', '')
+            
+            # 2. Tạo bộ dữ liệu gửi sang MoMo
+            requestId = str(uuid.uuid4())
+            orderId = str(uuid.uuid4())
+            redirectUrl = "https://google.com"
+            ipnUrl = "https://google.com"
+            requestType = "payWithATM"
+            extraData = ""
+            orderInfo = note_input if note_input else "Thanh toan don hang"
+            
+            # 3. Tạo Chữ Ký (Signature)
+            rawSignature = f"accessKey={ACCESS_KEY}&amount={amount}&extraData={extraData}&ipnUrl={ipnUrl}&orderId={orderId}&orderInfo={orderInfo}&partnerCode={PARTNER_CODE}&redirectUrl={redirectUrl}&requestId={requestId}&requestType={requestType}"
+            
+            h = hmac.new(bytes(SECRET_KEY, 'ascii'), bytes(rawSignature, 'ascii'), hashlib.sha256)
+            signature = h.hexdigest()
+            
+            # 4. Gửi lệnh
+            payload = {
+                'partnerCode': PARTNER_CODE,
+                'partnerName': "Store Payment",
+                'storeId': "MomoStore",
+                'requestId': requestId,
+                'amount': amount,
+                'orderId': orderId,
+                'orderInfo': orderInfo,
+                'redirectUrl': redirectUrl,
+                'ipnUrl': ipnUrl,
+                'lang': 'vi',
+                'extraData': extraData,
+                'requestType': requestType,
+                'signature': signature
+            }
+            
+            response = requests.post(MOMO_ENDPOINT, json=payload)
+            result = response.json()
+            
+            if result['resultCode'] == 0:
+                link_ket_qua = result['payUrl']
+            else:
+                error_msg = result.get('message', 'Lỗi không xác định')
+                
+        except Exception as e:
+            error_msg = str(e)
 
+    # --- GIAO DIỆN HTML ĐẸP MẮT ---
     return f"""
     <!DOCTYPE html>
-    <html lang="vi">
+    <html>
     <head>
-        <title>Thanh toán MoMo</title>
+        <title>Công cụ tạo Link MoMo VIP</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {{ font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f4f6f8; }}
-            .card {{ background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 90%; max-width: 400px; text-align: center; }}
-            .btn {{ display: block; width: 100%; padding: 15px; background: #d82d8b; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin-top: 20px; }}
+            body {{ font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 50px; }}
+            .card {{ background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }}
+            h2 {{ color: #d82d8b; text-align: center; margin-bottom: 20px; }} /* Màu hồng MoMo */
+            input {{ width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }}
+            button {{ width: 100%; padding: 12px; background: #d82d8b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }}
+            button:hover {{ background: #c21f7a; }}
+            .result {{ margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; word-break: break-all; }}
+            .error {{ margin-top: 20px; padding: 15px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 6px; }}
+            label {{ font-weight: bold; font-size: 14px; color: #555; }}
         </style>
     </head>
     <body>
         <div class="card">
-            <h3>{RECEIVER_NAME}</h3>
-            <h1 style="color:#d82d8b">{amount_formatted}</h1>
-            <p>{note}</p>
-            <p style="color:#888; font-size:12px">Mã đơn: {order_id}</p>
+            <h2>MoMo Link Generator</h2>
+            <form method="POST">
+                <label>Số tiền muốn thu (VNĐ):</label>
+                <input type="number" name="amount" placeholder="Ví dụ: 20000" required>
+                
+                <label>Nội dung thu:</label>
+                <input type="text" name="note" placeholder="Ví dụ: Mua the Garena 20k">
+                
+                <button type="submit">TẠO LINK NGAY</button>
+            </form>
             
-            <a href="{deep_link}" class="btn">MỞ APP THANH TOÁN NGAY</a>
+            {f'<div class="result"><b>Link mới:</b><br><a href="{link_ket_qua}" target="_blank">Bấm vào đây để test</a><br><br><input type="text" value="{link_ket_qua}" readonly onclick="this.select()"></div>' if link_ket_qua else ''}
+            
+            {f'<div class="error">Lỗi: {error_msg}</div>' if error_msg else ''}
         </div>
     </body>
     </html>
@@ -98,4 +117,3 @@ def show_invoice():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-

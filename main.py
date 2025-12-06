@@ -7,11 +7,11 @@ from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
 
-# --- CẤU HÌNH NGƯỜI NHẬN (ĐÃ ĐỔI VỀ 10 SỐ) ---
-# 0166 đổi thành 036
-RECEIVER_PHONE = "0363606953"  
-# Tên hiển thị trên web
-RECEIVER_NAME = "SHOP GAME BÀ CHỊ" 
+
+
+RECEIVER_PHONE = "01663606953"  
+
+RECEIVER_NAME = "TRAN HAI YEN" 
 
 @app.route('/admin-momo', methods=['GET', 'POST'])
 def generator():
@@ -98,3 +98,4 @@ def show_invoice():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+

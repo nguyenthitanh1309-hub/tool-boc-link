@@ -9,13 +9,14 @@ from flask import Flask, request, jsonify, render_template_string
 
 app = Flask(__name__)
 
-
-PARTNER_CODE = "MOMOR3PG20251105_TEST"      
-ACCESS_KEY = "GikWfAw9NBW1u5R"            
-SECRET_KEY = "8XSbh21pbkVmxgBQL5Q7SsEEZc37vRy0"            
+PARTNER_CODE = os.environ.get("MOMO_PARTNER_CODE")
+ACCESS_KEY = os.environ.get("MOMO_ACCESS_KEY")
+SECRET_KEY = os.environ.get("MOMO_SECRET_KEY") 
+if not PARTNER_CODE:
+    print("LỖI: Chưa cấu hình Key trên Render!")
 MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
-# --- GIAO DIỆN TẠO LINK (Cho bà chị dùng) ---
+
 @app.route('/admin-momo', methods=['GET', 'POST'])
 def momo_generator():
     link_ket_qua = ""
@@ -116,3 +117,4 @@ def momo_generator():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+

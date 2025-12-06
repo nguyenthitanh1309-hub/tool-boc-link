@@ -14,7 +14,7 @@ ACCESS_KEY = os.environ.get("MOMO_ACCESS_KEY")
 SECRET_KEY = os.environ.get("MOMO_SECRET_KEY") 
 if not PARTNER_CODE:
     print("LỖI: Chưa cấu hình Key trên Render!")
-MOMO_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create"
+MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
 
 @app.route('/admin-momo', methods=['GET', 'POST'])

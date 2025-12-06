@@ -1,113 +1,101 @@
 import os
-import json
-import hmac
-import hashlib
-import requests
-import uuid
-import time
-from flask import Flask, request, jsonify, render_template_string
+import base64
+from flask import Flask, request, render_template_string
 
 app = Flask(__name__)
 
-PARTNER_CODE = os.environ.get("MOMO_PARTNER_CODE")
-ACCESS_KEY = os.environ.get("MOMO_ACCESS_KEY")
-SECRET_KEY = os.environ.get("MOMO_SECRET_KEY") 
-MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
+RECEIVER_PHONE = "01663606953" 
+# Tên người nhận 
+RECEIVER_NAME = "TRAN HAI YEN"
 
 @app.route('/admin-momo', methods=['GET', 'POST'])
-def momo_generator():
-    link_ket_qua = ""
-    error_msg = ""
-    
+def generator():
+    gen_link = ""
     if request.method == 'POST':
-        try:
-            # 1. Lấy số tiền và nội dung nhập từ Web
-            amount_input = request.form.get('amount')
-            note_input = request.form.get('note')
-            
-            # Xử lý số tiền 
-            amount = str(amount_input).replace(',', '').replace('.', '')
-            
-            # 2. Tạo bộ dữ liệu gửi sang MoMo
-            requestId = str(uuid.uuid4())
-            orderId = str(uuid.uuid4())
-            redirectUrl = "https://google.com"
-            ipnUrl = "https://google.com"
-            requestType = "captureWallet"
-            extraData = ""
-            orderInfo = note_input if note_input else "Thanh toan don hang"
-            
-            # 3. Tạo Chữ Ký (Signature)
-            rawSignature = f"accessKey={ACCESS_KEY}&amount={amount}&extraData={extraData}&ipnUrl={ipnUrl}&orderId={orderId}&orderInfo={orderInfo}&partnerCode={PARTNER_CODE}&redirectUrl={redirectUrl}&requestId={requestId}&requestType={requestType}"
-            
-            h = hmac.new(bytes(SECRET_KEY, 'ascii'), bytes(rawSignature, 'ascii'), hashlib.sha256)
-            signature = h.hexdigest()
-            
-            # 4. Gửi lệnh
-            payload = {
-                'partnerCode': PARTNER_CODE,
-                'partnerName': "Store Payment",
-                'storeId': "MomoStore",
-                'requestId': requestId,
-                'amount': amount,
-                'orderId': orderId,
-                'orderInfo': orderInfo,
-                'redirectUrl': redirectUrl,
-                'ipnUrl': ipnUrl,
-                'lang': 'vi',
-                'extraData': extraData,
-                'requestType': requestType,
-                'signature': signature
-            }
-            
-            response = requests.post(MOMO_ENDPOINT, json=payload)
-            result = response.json()
-            
-            if result['resultCode'] == 0:
-                link_ket_qua = result['payUrl']
-            else:
-                error_msg = result.get('message', 'Lỗi không xác định')
-                
-        except Exception as e:
-            error_msg = str(e)
+        amount = request.form.get('amount')
+        note = request.form.get('note')
+        
+        # Tạo Deep Link (Mở App)
+        # Cấu trúc: momo://?action=transfer&receiver=SDT&amount=TIEN&note=NOIDUNG
+        deep_link = f"momo://?action=transfer&receiver={RECEIVER_PHONE}&amount={amount}&note={note}"
+        
+        # Mã hóa để giấu link
+        encoded = base64.b64encode(deep_link.encode('utf-8')).decode('utf-8')
+        host_url = request.host_url.rstrip('/')
+        gen_link = f"{host_url}/?data={encoded}"
 
-    
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
-        <title>tool bọc link</title>
+        <title>Tool Tạo Link Mở App</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {{ font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 50px; }}
-            .card {{ background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }}
-            h2 {{ color: #d82d8b; text-align: center; margin-bottom: 20px; }} /* Màu hồng MoMo */
-            input {{ width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }}
-            button {{ width: 100%; padding: 12px; background: #d82d8b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }}
-            button:hover {{ background: #c21f7a; }}
-            .result {{ margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; word-break: break-all; }}
-            .error {{ margin-top: 20px; padding: 15px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 6px; }}
-            label {{ font-weight: bold; font-size: 14px; color: #555; }}
+            body {{ font-family: sans-serif; padding: 20px; text-align: center; }}
+            input, button {{ width: 100%; padding: 15px; margin: 10px 0; border-radius: 8px; border: 1px solid #ddd; }}
+            button {{ background: #a50064; color: white; font-weight: bold; border: none; }}
+            .result {{ background: #eee; padding: 15px; word-break: break-all; border-radius: 8px; }}
         </style>
     </head>
     <body>
-        <div class="card">
-            <h2> MoMo Link Generator</h2>
-            <form method="POST">
-                <label>Số tiền muốn thu (VNĐ):</label>
-                <input type="number" name="amount" placeholder=" " required>
-                
-                <label>Nội dung thu:</label>
-                <input type="text" name="note" placeholder=" ">
-                
-                <button type="submit">TẠO LINK NGAY</button>
-            </form>
-            
-            {f'<div class="result"><b> Link đã bọc:</b><br><a href="{link_ket_qua}" target="_blank">Bấm vào đây để test</a><br><br><input type="text" value="{link_ket_qua}" readonly onclick="this.select()"></div>' if link_ket_qua else ''}
-            
-            {f'<div class="error"> Lỗi: {error_msg}</div>' if error_msg else ''}
-        </div>
+        <h2 Tạo Link Mở App MoMo</h2>
+        <form method="POST">
+            <input type="number" name="amount" placeholder="Nhập số tiền" required>
+            <input type="text" name="note" placeholder="Nội dung thu tiền">
+            <button type="submit">TẠO LINK</button>
+        </form>
+        {f'<div class="result"><b>Link của chị đây:</b><br><a href="{gen_link}">{gen_link}</a></div>' if gen_link else ''}
+    </body>
+    </html>
+    """
+
+@app.route('/')
+def redirect_to_app():
+    data = request.args.get('data')
+    if not data: return "Lỗi: Link hỏng rồi"
+    
+    # Giải mã ra cái link momo://
+    try:
+        momo_schema = base64.b64decode(data).decode('utf-8')
+    except:
+        return "Lỗi giải mã"
+
+    # Link dự phòng (Nếu khách không cài App thì mở web)
+    # Dùng link me.momo.vn để không bị lỗi
+    fallback_url = f"https://me.momo.vn/{RECEIVER_PHONE}"
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Đang mở MoMo...</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{ background-color: #a50064; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: white; font-family: sans-serif; text-align: center; }}
+            .loader {{ border: 4px solid #f3f3f3; border-top: 4px solid #ff4081; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; margin-bottom: 20px; }}
+            @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+            .btn {{ margin-top: 20px; padding: 10px 20px; background: white; color: #a50064; text-decoration: none; border-radius: 20px; font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <div class="loader"></div>
+        <h3>Đang mở App MoMo...</h3>
+        <p>Vui lòng đợi trong giây lát</p>
+        
+        <a id="btnOpen" href="{momo_schema}" class="btn">Bấm vào đây nếu không tự mở</a>
+
+        <script>
+            // Tự động kích hoạt mở App ngay khi vào web
+            setTimeout(function() {{
+                window.location.href = "{momo_schema}";
+            }}, 500);
+
+            // Nếu sau 3 giây không mở được (do chưa cài app), thì chuyển sang web
+            setTimeout(function() {{
+                // window.location.href = "{fallback_url}"; 
+            }}, 3000);
+        </script>
     </body>
     </html>
     """
@@ -115,5 +103,3 @@ def momo_generator():
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
-

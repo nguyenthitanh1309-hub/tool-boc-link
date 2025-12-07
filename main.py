@@ -7,40 +7,44 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Lấy key từ biến môi trường Render
+# Lấy key từ biến môi trường
 PARTNER_CODE = os.getenv("MOMO_PARTNER_CODE")
 ACCESS_KEY = os.getenv("MOMO_ACCESS_KEY")
 SECRET_KEY = os.getenv("MOMO_SECRET_KEY")
 
-# Endpoint MoMo (sandbox hoặc production)
-MOMO_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create"  # đổi sang production nếu cần
+# Endpoint MoMo (sandbox)
+MOMO_ENDPOINT = "https://test-payment.momo.vn/v2/gateway/api/create"
+
+@app.route("/", methods=["GET"])
+def home():
+    return "MoMo API đang chạy!"
 
 @app.route("/create-payment", methods=["POST"])
 def create_payment():
     try:
-        # Nhận dữ liệu từ client
-        req_data = request.get_json()
+        # Hỗ trợ cả JSON và form
+        if request.is_json:
+            req_data = request.get_json()
+        else:
+            req_data = request.form
+
         amount = str(req_data.get("amount", "100000"))
         order_info = req_data.get("orderInfo", "Thanh toán đơn hàng")
         return_url = req_data.get("returnUrl", "https://yourdomain.com/return")
         notify_url = req_data.get("notifyUrl", "https://yourdomain.com/notify")
 
-        # Tạo ID đơn hàng và request
         order_id = str(uuid.uuid4())
         request_id = str(uuid.uuid4())
         extra_data = ""
 
-        # Tạo rawData để ký
         raw_data = f"accessKey={ACCESS_KEY}&amount={amount}&extraData={extra_data}&orderId={order_id}&orderInfo={order_info}&partnerCode={PARTNER_CODE}&redirectUrl={return_url}&requestId={request_id}&requestType=captureWallet&notifyUrl={notify_url}"
 
-        # Tạo chữ ký SHA256
         signature = hmac.new(
             SECRET_KEY.encode("utf-8"),
             raw_data.encode("utf-8"),
             hashlib.sha256
         ).hexdigest()
 
-        # Tạo payload gửi MoMo
         payload = {
             "partnerCode": PARTNER_CODE,
             "accessKey": ACCESS_KEY,
@@ -56,15 +60,14 @@ def create_payment():
             "lang": "vi"
         }
 
-        # Gửi request đến MoMo
         response = requests.post(MOMO_ENDPOINT, json=payload)
         result = response.json()
 
-        # Trả về link thanh toán
         return jsonify({
             "payUrl": result.get("payUrl"),
             "orderId": order_id,
-            "requestId": request_id
+            "requestId": request_id,
+            "momoResponse": result
         })
 
     except Exception as e:

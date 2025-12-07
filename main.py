@@ -7,22 +7,18 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Lấy key từ biến môi trường Render
 PARTNER_CODE = os.getenv("MOMO_PARTNER_CODE")
 ACCESS_KEY = os.getenv("MOMO_ACCESS_KEY")
 SECRET_KEY = os.getenv("MOMO_SECRET_KEY")
-
-# Endpoint production MoMo
 MOMO_ENDPOINT = "https://payment.momo.vn/v2/gateway/api/create"
 
 @app.route("/", methods=["GET"])
 def home():
-    return "MoMo API đang chạy (Production)!"
+    return "MoMo Production API đang hoạt động!"
 
 @app.route("/create-payment", methods=["POST"])
 def create_payment():
     try:
-        # Nhận dữ liệu từ client (JSON)
         req_data = request.get_json(force=True)
 
         amount = str(req_data.get("amount", "100000"))
@@ -35,7 +31,6 @@ def create_payment():
         extra_data = ""
         request_type = "captureWallet"
 
-        # Tạo rawSignature theo đúng thứ tự MoMo yêu cầu
         raw_signature = (
             f"accessKey={ACCESS_KEY}"
             f"&amount={amount}"
@@ -49,14 +44,12 @@ def create_payment():
             f"&requestType={request_type}"
         )
 
-        # Tạo chữ ký SHA256
         signature = hmac.new(
             SECRET_KEY.encode("utf-8"),
             raw_signature.encode("utf-8"),
             hashlib.sha256
         ).hexdigest()
 
-        # Payload gửi sang MoMo
         payload = {
             "partnerCode": PARTNER_CODE,
             "accessKey": ACCESS_KEY,
@@ -73,9 +66,7 @@ def create_payment():
         }
 
         response = requests.post(MOMO_ENDPOINT, json=payload)
-        result = response.json()
-
-        return jsonify(result)
+        return jsonify(response.json())
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

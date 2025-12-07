@@ -88,15 +88,15 @@ def create_page():
         <title>MoMo Link Generator</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <style>
-            body {{ font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 50px; }}
-            .card {{ background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }}
-            h2 {{ color: #d82d8b; text-align: center; margin-bottom: 20px; }}
-            input {{ width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }}
-            button {{ width: 100%; padding: 12px; background: #d82d8b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }}
-            button:hover {{ background: #c21f7a; }}
-            .result {{ margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; word-break: break-word; }}
-            .error {{ margin-top: 20px; padding: 15px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 6px; }}
-            label {{ font-weight: bold; font-size: 14px; color: #555; }}
+            body { font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; padding-top: 50px; }
+            .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 100%; max-width: 400px; }
+            h2 { color: #d82d8b; text-align: center; margin-bottom: 20px; }
+            input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+            button { width: 100%; padding: 12px; background: #d82d8b; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 16px; }
+            button:hover { background: #c21f7a; }
+            .result { margin-top: 20px; padding: 15px; background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; word-break: break-word; }
+            .error { margin-top: 20px; padding: 15px; background: #ffebee; border: 1px solid #ffcdd2; color: #c62828; border-radius: 6px; }
+            label { font-weight: bold; font-size: 14px; color: #555; }
         </style>
     </head>
     <body>
